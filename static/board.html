@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<style>
+
+    body{
+        padding: 40px;
+    }
+
+    .square{
+        width: 50px;
+        height: 50px;
+        border: solid black 1px;
+        text-align: center;
+        line-height: 50px;
+        font-size: 40px;
+        cursor: pointer;
+    }
+
+    .lastMove{
+        color: blue;
+        font-weight: bolder; 
+    }
+
+    .odd {
+        background: rgba(173, 212, 228, 0.8);
+    }
+
+    .even {
+        background: rgba(246, 249, 253, 0.8);
+    }
+
+    .dragging {
+        opacity: 0.5;
+    }
+
+    .board{
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        width: 400px;
+    }
+
+    .rank{
+        display: flex;
+    }
+</style>
+
+<body>
+    <script>
+        const startingGrid = [ 
+            [ '♖', '♘', '♗', '♔', '♕', '♗', '♘', '♖' ],
+            [ '♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙' ],
+            [ ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' ],
+            [ ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' ],
+            [ ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' ],
+            [ ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' ],
+            [ '♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟' ],
+            [ '♜', '♞', '♝', '♚', '♛', '♝', '♞', '♜' ]
+        ];
+
+        let mouseDownIcon = ' ';
+
+        const grid = new Array(8).fill().map(_ => new Array(8).fill());
+        const board = document.createElement('div');
+        board.className = 'board';
+        document.body.appendChild(board);
+        grid.forEach((rank, i) => {
+            rank.forEach((_, j) => {
+                const square = document.createElement('div');
+                square.className = `square ${ (i + j) % 2 ? 'odd' : 'even' }`;
+                square.id = `x${i}${j}`;
+                square.setAttribute('draggable', true);
+                const piece = startingGrid[i][j];
+                square.innerText = piece;
+                square.addEventListener('mousedown', mouseDown);
+                square.addEventListener('mouseup', mouseUp);
+                board.appendChild(square);
+            });
+        });
+
+        function mouseDown(e){
+            e.target.classList.add('dragging');
+            mouseDownIcon = e.target.innerText;
+        }
+
+        function mouseUp(e){
+            document.querySelector('.dragging').innerText = ' ';
+            document.querySelector('.dragging').classList.remove('dragging');
+            Array.from(document.querySelectorAll('.lastMove')).forEach(d => d.classList.remove('lastMove'));
+            e.target.innerText = mouseDownIcon;
+            mouseDownIcon = 'x'
+        }
+
+        async function nextMove(){
+            const currBoard = grid.map((rank, i) => {
+                return rank.map((_, j) => {
+                    const piece = document.querySelector(`#x${i}${j}`).innerText;
+                    return piece || ' ';
+                });
+            });
+
+            const resp = await fetch("/move", {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                method: "POST",
+                body: JSON.stringify({ board: currBoard })
+            });
+            const json = await resp.json();
+            console.log(json);
+            applyMove(json.suggestedBoard);
+        }
+
+        function applyMove(board){
+            grid.forEach((rank, i) => {
+            rank.forEach((_, j) => {
+                const square = document.querySelector(`#x${i}${j}`);
+                if(square.innerText !== board[i][j]){
+                    square.classList.add('lastMove');
+                }else{
+                    square.classList.remove('lastMove');
+                }
+                square.innerText = board[i][j];
+            });
+        });
+        }
+
+    </script>
+    <button onclick="nextMove()">Next Move</button>
+</body>
+</html>
